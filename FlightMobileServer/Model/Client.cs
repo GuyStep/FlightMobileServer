@@ -6,10 +6,9 @@ namespace FlightMobileServer.Model
 {
     public class Client
     {
-        // For connecting to the simulator.
-        TcpClient tcpclnt;
-        // For reading and writing data.
-        NetworkStream stm;
+        private int maxChars = 100;
+        private TcpClient tcpClient;
+        private NetworkStream stream;
         private string ip;
         private int port;
         public Client(string ip, int port)
@@ -19,58 +18,51 @@ namespace FlightMobileServer.Model
         }
         public void Connect()
         {
-            this.tcpclnt = new TcpClient();
+            this.tcpClient = new TcpClient();
             try
             {
-                // Try connect the server.
-                tcpclnt.Connect(ip, port);
-                stm = tcpclnt.GetStream();
+                tcpClient.Connect(ip, port);
+                stream = tcpClient.GetStream();
             }
-            catch (Exception e)
+            catch (Exception e) //Could not connect to simulator
             {
-                // Can't connect.
-                if (e.Message.Contains("No connection"))
-                {
-                    Exception e1 = new Exception("not connected");
-                    throw e1;
-                }
-                Console.WriteLine("dfsfsdfsdfsdfs");
+                if (e.Message.Contains("No connection")) throw new Exception("Could not connect to simulator");
             }
         }
         public void Disconnect()
         {
-            tcpclnt.Close();
+            tcpClient.Close();
         }
         public string Read()
         {
-            byte[] bb = new byte[100];
-            int k = this.stm.Read(bb, 0, 100);
-            string massage = "";
-            // Convert from bytes to string.
-            for (int i = 0; i < k; i++)
-                massage += (Convert.ToChar(bb[i]));
-            return massage;
+            string stringResult = "";
+            byte[] receivedData = new byte[maxChars];
+            int bytesLength = this.stream.Read(receivedData, 0, maxChars);
+           
+            for (int i = 0; i < bytesLength; i++) //Convert response bytes to string
+                stringResult += (Convert.ToChar(receivedData[i]));
+            return stringResult;
         }
-        public void Write(string command)
+        public void Write(string data)
         {
-            this.stm = this.tcpclnt.GetStream();
-            ASCIIEncoding asen = new ASCIIEncoding();
-            byte[] ba = asen.GetBytes(command);
-            stm.Write(ba, 0, ba.Length);
+            this.stream = this.tcpClient.GetStream();
+            ASCIIEncoding ascii = new ASCIIEncoding();
+            byte[] commandInBytes = ascii.GetBytes(data); //Convert command string to bytes
+            stream.Write(commandInBytes, 0, commandInBytes.Length);
         }
         public void SetTimeOutRead(int time)
         {
-            this.tcpclnt.ReceiveTimeout = time;
+            this.tcpClient.ReceiveTimeout = time;
         }
 
         public TcpClient getTcpClient()
         {
-            return this.tcpclnt;
+            return this.tcpClient;
         }
 
-        public bool IsConnect()
+        public bool IsConnected()
         {
-            return this.tcpclnt.Connected;
+            return this.tcpClient.Connected;
         }
     }
 }

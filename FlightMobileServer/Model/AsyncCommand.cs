@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace FlightMobileServer.Model
 {
-    public enum ResponseCode { Ok, NotOk, Timeout, Disconnected, ConnectionLost, FailUpdate }
+    public enum ResponseCode {Ok, NotOk}
     public class AsyncCommand
     {
         public Command Command { get; private set; }
@@ -11,9 +11,9 @@ namespace FlightMobileServer.Model
         public Task<ResponseCode> Task { get => Completion.Task; }
         public TaskCompletionSource<ResponseCode> Completion { get; private set; }
 
-        public AsyncCommand(Command cmd)
+        public AsyncCommand(Command command)
         {
-            this.Command = cmd;
+            this.Command = command;
 
             Completion = new TaskCompletionSource<ResponseCode>(TaskCreationOptions.RunContinuationsAsynchronously);
         }

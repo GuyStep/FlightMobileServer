@@ -28,7 +28,7 @@ namespace FlightMobileServer
             services.AddControllers();
             string ip = Configuration.GetValue<string>("Logging:ConnectionDetails:ip");
             int port = Configuration.GetValue<int>("Logging:ConnectionDetails:port");
-            Imodel commandManager = new FlightAppModel(ip, port);
+            modelInterface commandManager = new FlightAppModel(ip, port);
             services.AddSingleton(commandManager);
             services.AddMvc().AddControllersAsServices();
         }

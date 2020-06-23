@@ -12,121 +12,83 @@ using System.Net.Http;
 
 namespace FlightMobileServer.Model
 {
-    public class FlightAppModel : Imodel
+    public class FlightAppModel : modelInterface
     {
         Client telnetClient;
-        private readonly BlockingCollection<AsyncCommand> _queueCommand;
+        private readonly BlockingCollection<AsyncCommand> commandsQueue;
 
-        public string elevatorCommand = "/controls/flight/elevator";
-        public string rudderCommand = "/controls/flight/rudder";
-        public string aileronCommand = "/controls/flight/aileron";
-        public string throttleCommand = "/controls/engines/current-engine/throttle";
+        public string stringElevator = "/controls/flight/elevator";
+        public string stringRudder = "/controls/flight/rudder";
+        public string stringAileron = "/controls/flight/aileron";
+        public string stringThrottle = "/controls/engines/current-engine/throttle";
 
 
         public FlightAppModel(string ip, int port)
         {
-            _queueCommand = new BlockingCollection<AsyncCommand>();
+            commandsQueue = new BlockingCollection<AsyncCommand>();
             this.telnetClient = new Client(ip, port);
             this.telnetClient.Connect();
             this.telnetClient.SetTimeOutRead(10000);
-            start();
-
+            Task.Factory.StartNew(ProcessCommand);
         }
-        Task<ResponseCode> Imodel.Execute(Command cmd)
+        Task<ResponseCode> modelInterface.Execute(Command cmd)
         {
             var asyncCommand = new AsyncCommand(cmd);
-            _queueCommand.Add(asyncCommand);
+            commandsQueue.Add(asyncCommand);
             return asyncCommand.Task;
         }
         public void Run(string ip, int port)
         {
-            // Set ip and port.
             this.telnetClient = new Client(ip, port);
-            // Connect to the simulator.
             this.Connect();
-            // Set time out to 10 seconds.
             this.telnetClient.SetTimeOutRead(10000);
-
-            start();
+            Task.Factory.StartNew(ProcessCommand);
         }
         public void Connect()
         {
             try
             {
-                // Try connect.
                 telnetClient.Connect();
-                this.telnetClient.Write("data\n");
+                this.telnetClient.Write("data\n"); //Cancel ordinary prompt
             }
-            catch (Exception e)
+            catch
             {
-                // We couldn't connect.
-                if (e.Message == "not connected")
-                {
-                    Console.WriteLine("not connected");
-                }
 
+                Console.WriteLine("Problem with sending message to simulator");
             }
         }
         public void Disconnect()
         {
-            // Stop the connection with the simulator.
             telnetClient.Disconnect();
-        }
-        public void start()
-        {
-            Task.Factory.StartNew(ProcessCommand);
         }
 
         private void ProcessCommand()
         {
-/*            if (!FlightMobile.model.IsConnect())
-            {
-                return;
-            }*/
             NetworkStream stream = telnetClient.getTcpClient().GetStream();
-            foreach (AsyncCommand command in _queueCommand.GetConsumingEnumerable())
+            foreach (AsyncCommand command in commandsQueue.GetConsumingEnumerable())
             {
-                ResponseCode result;
-
-                result = this.send(elevatorCommand, command.Command.Elevator);
-                if (result != ResponseCode.Ok)
+                string[] commands = new string[] { stringElevator, stringThrottle, stringAileron, stringRudder };
+                double[] values = new double[] { command.Command.Elevator, command.Command.Throttle, command.Command.Aileron, command.Command.Rudder };
+                ResponseCode resultCode;
+                for (int i = 0; i<4; i++)
                 {
-                    command.Completion.SetResult(result);
-                    continue;
+                    resultCode = this.send(commands[i], values[i]);
+                    if (resultCode != ResponseCode.Ok)
+                    {
+                        command.Completion.SetResult(resultCode);
+                        break;
+                    }
                 }
-                result = this.send(rudderCommand, command.Command.Rudder);
-                if (result != ResponseCode.Ok)
+                try
                 {
-                    command.Completion.SetResult(result);
-                    continue;
-
-                }
-                result = this.send(aileronCommand, command.Command.Aileron);
-                if (result != ResponseCode.Ok)
+                    command.Completion.SetResult(ResponseCode.Ok);
+                } catch
                 {
-                    command.Completion.SetResult(result);
-                    continue;
-
+                    continue; //In case completion status was in the exact moment when simulator falls/dc
                 }
-                result = this.send(throttleCommand, command.Command.Throttle);
-                if (result != ResponseCode.Ok)
-                {
-                    command.Completion.SetResult(result);
-                    continue;
-
-                }
-
-                command.Completion.SetResult(ResponseCode.Ok);
             }
 
         }
-
-        //execptions:
-        //0 = "OK".
-        //1 = "Timeout of getting a result from the FlightGear"
-        //2 = "The fightgear has been disconnected"
-        //3 = "The connection with the flightgear has been lost"
-        //4 =
 
         public ResponseCode send(string data, double value)
         {
@@ -137,36 +99,17 @@ namespace FlightMobileServer.Model
 
                 if (Double.Parse(telnetClient.Read()) != value)
                 {
-                    return ResponseCode.FailUpdate;
+                    return ResponseCode.NotOk;
                 }
             }
-            catch (IOException e)
-            {
-                if (e.ToString().Contains("A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond."))
-                {
-                    return ResponseCode.Timeout;
-                }
-                else
-                {
-                    return ResponseCode.Disconnected;
-
-                }
-            }
-            catch (Exception)
-            {
-                if (!telnetClient.IsConnect())
-                {
-                    return ResponseCode.ConnectionLost;
-                }
+            catch {
                 return ResponseCode.NotOk;
             }
             return ResponseCode.Ok;
         }
-        public bool IsConnect()
+        public bool IsConnected()
         {
-            return this.telnetClient.IsConnect();
+            return this.telnetClient.IsConnected();
         }
-
-
     }
 }

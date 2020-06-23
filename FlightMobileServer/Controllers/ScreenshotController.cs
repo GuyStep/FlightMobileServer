@@ -20,7 +20,7 @@ namespace ServerMobileApp.Controllers
         {
             var httpClient = new HttpClient
             {
-                Timeout = TimeSpan.FromSeconds(100)
+                Timeout = TimeSpan.FromSeconds(10)
             };
             HttpResponseMessage response = await httpClient.GetAsync("http://localhost:5000/screenshot");
             var image = await response.Content.ReadAsStreamAsync();

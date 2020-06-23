@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace FlightMobileServer.Model
 {
-    public interface Imodel
+    public interface modelInterface
     {
         public Task<ResponseCode> Execute(Command cmd);
-        public bool IsConnect();
+        public bool IsConnected();
     }
 }
