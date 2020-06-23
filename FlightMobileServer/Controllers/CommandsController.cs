@@ -21,12 +21,7 @@ namespace ServerMobileApp.Controllers
             return new string[] { "value1", "value2" };
         } 
 
-        // GET: api/Commands/5
-        [HttpGet("{id}", Name = "Get")]
-        public string Get(int id)
-        {
-            return "value";
-        }
+
 
         // POST: api/Commands
         [HttpPost]
